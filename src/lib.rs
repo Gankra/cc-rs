@@ -1058,7 +1058,7 @@ impl Build {
                     }
                 }
                 if libtst && libdir.is_dir() {
-                    println!(
+                    eprintln!(
                         "cargo:rustc-link-search=native={}",
                         libdir.to_str().unwrap()
                     );
@@ -1070,7 +1070,7 @@ impl Build {
                     "static" => "cudart_static",
                     bad => panic!("unsupported cudart option: {}", bad),
                 };
-                println!("cargo:rustc-link-lib={}", lib);
+                eprintln!("cargo:rustc-link-lib={}", lib);
             }
         }
 
@@ -1415,7 +1415,7 @@ impl Build {
         if !no_defaults {
             self.add_default_flags(&mut cmd, &target, &opt_level)?;
         } else {
-            println!("Info: default compiler flags are disabled");
+            eprintln!("Info: default compiler flags are disabled");
         }
 
         for arg in envflags {
@@ -1888,7 +1888,7 @@ impl Build {
                     cmd.push_cc_arg(format!("-stdlib=lib{}", stdlib).into());
                 }
                 _ => {
-                    println!(
+                    eprintln!(
                         "cargo:warning=cpp_set_stdlib is specified, but the {:?} compiler \
                          does not support this option, ignored",
                         cmd.family
@@ -1927,7 +1927,7 @@ impl Build {
             cmd.arg("-I").arg(directory);
         }
         if target.contains("aarch64") || target.contains("arm") {
-            println!("cargo:warning=The MSVC ARM assemblers do not support -D flags");
+            eprintln!("cargo:warning=The MSVC ARM assemblers do not support -D flags");
         } else {
             for &(ref key, ref value) in self.definitions.iter() {
                 if let Some(ref value) = *value {
@@ -2810,7 +2810,7 @@ impl Build {
 
     fn print(&self, s: &str) {
         if self.cargo_metadata {
-            println!("{}", s);
+            eprintln!("{}", s);
         }
     }
 
@@ -2979,7 +2979,7 @@ impl Tool {
     /// Don't push optimization arg if it conflicts with existing args
     fn push_opt_unless_duplicate(&mut self, flag: OsString) {
         if self.is_duplicate_opt_arg(&flag) {
-            println!("Info: Ignoring duplicate arg {:?}", &flag);
+            eprintln!("Info: Ignoring duplicate arg {:?}", &flag);
         } else {
             self.push_cc_arg(flag);
         }
@@ -3104,7 +3104,7 @@ fn run(cmd: &mut Command, program: &str) -> Result<(), Error> {
         }
     };
     print.join().unwrap();
-    println!("{}", status);
+    eprintln!("{}", status);
 
     if status.success() {
         Ok(())
@@ -3142,7 +3142,7 @@ fn run_output(cmd: &mut Command, program: &str) -> Result<Vec<u8>, Error> {
         }
     };
     print.join().unwrap();
-    println!("{}", status);
+    eprintln!("{}", status);
 
     if status.success() {
         Ok(stdout)
@@ -3158,20 +3158,20 @@ fn run_output(cmd: &mut Command, program: &str) -> Result<Vec<u8>, Error> {
 }
 
 fn spawn(cmd: &mut Command, program: &str) -> Result<(Child, JoinHandle<()>), Error> {
-    println!("running: {:?}", cmd);
+    eprintln!("running: {:?}", cmd);
 
     // Capture the standard error coming from these programs, and write it out
     // with cargo:warning= prefixes. Note that this is a bit wonky to avoid
     // requiring the output to be UTF-8, we instead just ship bytes from one
     // location to another.
-    match cmd.stderr(Stdio::piped()).spawn() {
+    match cmd.stderr(Stdio::piped()).stdout(Stdio::piped()).spawn() {
         Ok(mut child) => {
             let stderr = BufReader::new(child.stderr.take().unwrap());
             let print = thread::spawn(move || {
                 for line in stderr.split(b'\n').filter_map(|l| l.ok()) {
-                    print!("cargo:warning=");
+                    eprint!("cargo:warning=");
                     std::io::stdout().write_all(&line).unwrap();
-                    println!("");
+                    eprintln!("");
                 }
             });
             Ok((child, print))
